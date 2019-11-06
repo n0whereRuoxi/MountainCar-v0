@@ -158,7 +158,7 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.memory)
 
-def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9, targetReward=1000):
+def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9, targetReward=1000, debug = True):
     scores = []
     scoresWindow = deque(maxlen=100)
     eps = startEpsilon
@@ -171,8 +171,17 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
         done = False
         while not done:
             action = agent.act(state, eps)
+            if debug:
+                print("current state: ", state)
+                env.render()
+                print("action: ", action)
             nextState, reward, done, _ = env.step(action)
-            agent.step(action, reward, nextState, done)
+            reward_aug = abs(nextState[1]) * 20
+            if debug:
+                print("next state: ", nextState)
+                print("reward: ", reward)
+                print("reward_aug: ", reward_aug)
+            agent.step(action, reward + reward_aug, nextState, done)
             state = nextState
             score += reward
             if done:
@@ -202,43 +211,6 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
     print("Model training finished! \nAverage Score over last 100 episodes: {}\tNumber of Episodes: {}".format(
         np.mean(scoresWindow), numEpisodes))
     return scores
-
-
-def play_model(actor, renderEnv=False, shouldReturnImages=False):
-    state = env.reset()
-    score = 0
-    done = False
-    images = []
-    R = 0
-    t = 0
-    while not done:
-        if renderEnv:
-            if shouldReturnImages:
-                images.append(env.render("rgb_array"))
-            else:
-                env.render()
-        state = np.reshape(state, [-1, env.observation_space.shape[0]])
-        action = actor.predict(state)
-        nextState, reward, done, _ = env.step(np.argmax(action))
-        state = nextState
-        score += reward
-        if done:
-            return score, images
-    return 0, images
-
-def displayFramesAsGif(frames):
-    """
-    Displays a list of frames as a gif, with controls
-    """
-    plt.figure(figsize=(frames[0].shape[1] / 72.0, frames[0].shape[0] / 72.0), dpi = 72)
-    patch = plt.imshow(frames[0])
-    plt.axis('off')
-
-    def animate(i):
-        patch.set_data(frames[i])
-
-    anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval=50)
-    display(display_animation(anim, default_mode='loop'))
 
 #train
 envName = "MountainCar-v0"

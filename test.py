@@ -14,10 +14,8 @@ def play_model(actor):
     state = env.reset()
     score = 0
     done = False
-    images = []
-    R = 0
-    t = 0
     while not done:
+        # env.render()
         state = np.reshape(state, [-1, env.observation_space.shape[0]])
         action = actor.predict(state)
         nextState, reward, done, _ = env.step(np.argmax(action))
