@@ -95,7 +95,7 @@ class DDQNAgent:
 
     def step(self, action, reward, nextState, done):
         self.memory.add(self.prevState, action, reward, nextState, done)
-
+        # print("length of memory: ", len(self.memory), self.batchSize)
         if len(self.memory) > self.batchSize:
             experiences = self.memory.sample()
             self.learn(experiences, self.gamma)
@@ -113,7 +113,7 @@ class DDQNAgent:
 
     def learn(self, experiences, gamma):
         states, actions, rewards, nextStates, dones = experiences
-
+        # print("length of experience samples: ", len(states))
         for itr in range(len(states)):
             state, action, reward, nextState, done = states[itr], actions[itr], rewards[itr], nextStates[itr], dones[
                 itr]
@@ -122,10 +122,11 @@ class DDQNAgent:
 
             self.qTargets = self.localNetwork.model.predict(state)
             if done:
+                # print("done reward: ", reward)
                 self.qTargets[0][action] = reward
             else:
-                # nextQ = self.targetNetwork.model.predict(nextState)[0]
-                nextQ = self.localNetwork.model.predict(nextState)[0]
+                nextQ = self.targetNetwork.model.predict(nextState)[0]
+                # nextQ = self.localNetwork.model.predict(nextState)[0]
                 self.qTargets[0][action] = (reward + gamma * np.max(nextQ))
 
             self.localNetwork.model.fit(state, self.qTargets, epochs=1, verbose=0, callbacks=self.callbacks)
@@ -184,13 +185,15 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
                 print("next state: ", nextState)
                 print("reward: ", reward)
                 print("reward_aug: ", reward_aug)
-            agent.step(action, reward + reward_aug, nextState, done)
-            state = nextState
             score += reward
             score_aug += reward + reward_aug
-            # if done:
-            #     agent.updateTargetModel()
-            #     break
+            if done and score != -200:
+                reward_aug += 200
+            agent.step(action, reward + reward_aug, nextState, done)
+            state = nextState
+            if done:
+                agent.updateTargetModel()
+                break
         timeTaken = time() - initialTime
         scoresWindow.append(score)
         scores.append(score)
@@ -199,15 +202,14 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
         msg = 'Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tScore*: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}'\
             '\tEpsilon: {:.3f}\tAverage Score: {:.2f}\t'.format(episode, timeTaken, score, score_aug, state[0], np.mean(agent.qTargets), eps, np.mean(scoresWindow))
         if log_file_name:
-            with open(log_file_name, 'w+') as log_file:
-                log_file.write(msg)
-        else:
-            print(msg)
+            with open(log_file_name, 'a') as log_file:
+                log_file.write(msg + '\n')
+        print(msg)
         if episode % 10 == 0:
             # print('Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}\tAverage Score: {:.2f}'.format(
                     # episode, timeTaken, score, state[0], np.mean(agent.qTargets), np.mean(scoresWindow)))
             agent.localNetwork.model.save('save/{}_local_model_{}.h5'.format(envName, initialTime))
-            # agent.targetNetwork.model.save('save/{}_target_model_{}.h5'.format(envName, initialTime))
+            agent.targetNetwork.model.save('save/{}_target_model_{}.h5'.format(envName, initialTime))
         if np.mean(scoresWindow) >= targetReward:
             avgScoreGreaterThanTargetCounter += 1
             if avgScoreGreaterThanTargetCounter >= 5:
@@ -220,9 +222,13 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
         np.mean(scoresWindow), numEpisodes))
     return scores
 
-#train
-envName = "MountainCar-v0"
-log_file_name = "experiments/exp2/exp2.log"
-env = gym.make(envName)
-agent = DDQNAgent(env, bufferSize=100000, gamma=0.99, batchSize=64, lr=0.0001, callbacks=[])
-scores = train(numEpisodes=2000, targetReward=-110, epsDecayRate=0.9, debug = False, log_file_name = log_file_name)
+if __name__ == "__main__":
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--log", help="directory of the log file",
+                           type=str, default=None, required=False)
+    args = argparser.parse_args()
+    envName = "MountainCar-v0"
+    log_file_name = args.log
+    env = gym.make(envName)
+    agent = DDQNAgent(env, bufferSize=100000, gamma=0.99, batchSize=64, lr=0.0001, callbacks=[])
+    scores = train(numEpisodes=2000, targetReward=-110, epsDecayRate=0.9, debug = False, log_file_name = log_file_name)
