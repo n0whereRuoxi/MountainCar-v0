@@ -15,10 +15,12 @@ def play_model(actor):
     score = 0
     done = False
     while not done:
-        # env.render()
+        env.render()
         state = np.reshape(state, [-1, env.observation_space.shape[0]])
         action = actor.predict(state)
         nextState, reward, done, _ = env.step(np.argmax(action))
+        if done:
+            print(nextState, reward, done)
         state = nextState
         score += reward
         if done:

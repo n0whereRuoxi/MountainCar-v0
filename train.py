@@ -158,8 +158,9 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.memory)
 
-def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9, targetReward=1000, debug = True):
+def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9, targetReward=1000, debug = True, log_file_name = None):
     scores = []
+    scores_aug = []
     scoresWindow = deque(maxlen=100)
     eps = startEpsilon
     print("Starting model training for {} episodes.".format(numEpisodes))
@@ -168,6 +169,7 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
         initialTime = time()
         state = agent.resetEpisode()
         score = 0
+        score_aug = 0
         done = False
         while not done:
             action = agent.act(state, eps)
@@ -176,7 +178,7 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
                 env.render()
                 print("action: ", action)
             nextState, reward, done, _ = env.step(action)
-            reward_aug = abs(nextState[1]) * 20
+            reward_aug = min(1, abs(nextState[1]) * 10.0 / 0.7)
             if debug:
                 print("next state: ", nextState)
                 print("reward: ", reward)
@@ -184,20 +186,25 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
             agent.step(action, reward + reward_aug, nextState, done)
             state = nextState
             score += reward
+            score_aug += reward + reward_aug
             if done:
                 agent.updateTargetModel()
                 break
         timeTaken = time() - initialTime
         scoresWindow.append(score)
         scores.append(score)
-        eps = max(endEpsilon, epsDecayRate * eps)
-        print('Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}'
-                     '\tEpsilon: {:.3f}\tAverage Score: {:.2f}\t'.format(
-            episode, timeTaken, score, state[0], np.mean(agent.qTargets), eps, np.mean(scoresWindow)))
-        if episode % 100 == 0:
-            print(
-                'Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}\tAverage Score: {:.2f}'.format(
-                    episode, timeTaken, score, state[0], np.mean(agent.qTargets), np.mean(scoresWindow)))
+        scores_aug.append(score_aug)
+        eps = max(endEpsilon, epsDecayRate * eps)        
+        msg = 'Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tScore*: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}'\
+            '\tEpsilon: {:.3f}\tAverage Score: {:.2f}\t'.format(episode, timeTaken, score, score_aug, state[0], np.mean(agent.qTargets), eps, np.mean(scoresWindow))
+        if log_file_name:
+            with open(log_file_name, 'w+') as log_file:
+                log_file.write(msg)
+        else:
+            print(msg)
+        if episode % 10 == 0:
+            # print('Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}\tAverage Score: {:.2f}'.format(
+                    # episode, timeTaken, score, state[0], np.mean(agent.qTargets), np.mean(scoresWindow)))
             agent.localNetwork.model.save('save/{}_local_model_{}.h5'.format(envName, initialTime))
             agent.targetNetwork.model.save('save/{}_target_model_{}.h5'.format(envName, initialTime))
         if np.mean(scoresWindow) >= targetReward:
@@ -214,6 +221,7 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
 
 #train
 envName = "MountainCar-v0"
+log_file_name = "logs/2.log"
 env = gym.make(envName)
 agent = DDQNAgent(env, bufferSize=100000, gamma=0.99, batchSize=64, lr=0.0001, callbacks=[])
-scores = train(numEpisodes=2000, targetReward=-110, epsDecayRate=0.9)
+scores = train(numEpisodes=2000, targetReward=-110, epsDecayRate=0.9, debug = False, log_file_name = log_file_name)
