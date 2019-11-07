@@ -186,9 +186,9 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
                 print("reward: ", reward)
                 print("reward_aug: ", reward_aug)
             score += reward
+            # if done and score != -200:
+            #     reward_aug += 200
             score_aug += reward + reward_aug
-            if done and score != -200:
-                reward_aug += 200
             agent.step(action, reward + reward_aug, nextState, done)
             state = nextState
             if done:
