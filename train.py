@@ -124,7 +124,8 @@ class DDQNAgent:
             if done:
                 self.qTargets[0][action] = reward
             else:
-                nextQ = self.targetNetwork.model.predict(nextState)[0]
+                # nextQ = self.targetNetwork.model.predict(nextState)[0]
+                nextQ = self.localNetwork.model.predict(nextState)[0]
                 self.qTargets[0][action] = (reward + gamma * np.max(nextQ))
 
             self.localNetwork.model.fit(state, self.qTargets, epochs=1, verbose=0, callbacks=self.callbacks)
@@ -187,9 +188,9 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
             state = nextState
             score += reward
             score_aug += reward + reward_aug
-            if done:
-                agent.updateTargetModel()
-                break
+            # if done:
+            #     agent.updateTargetModel()
+            #     break
         timeTaken = time() - initialTime
         scoresWindow.append(score)
         scores.append(score)
@@ -197,16 +198,16 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
         eps = max(endEpsilon, epsDecayRate * eps)        
         msg = 'Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tScore*: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}'\
             '\tEpsilon: {:.3f}\tAverage Score: {:.2f}\t'.format(episode, timeTaken, score, score_aug, state[0], np.mean(agent.qTargets), eps, np.mean(scoresWindow))
-        # if log_file_name:
-        #     with open(log_file_name, 'w+') as log_file:
-        #         log_file.write(msg)
-        # else:
-        print(msg)
+        if log_file_name:
+            with open(log_file_name, 'w+') as log_file:
+                log_file.write(msg)
+        else:
+            print(msg)
         if episode % 10 == 0:
             # print('Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}\tAverage Score: {:.2f}'.format(
                     # episode, timeTaken, score, state[0], np.mean(agent.qTargets), np.mean(scoresWindow)))
             agent.localNetwork.model.save('save/{}_local_model_{}.h5'.format(envName, initialTime))
-            agent.targetNetwork.model.save('save/{}_target_model_{}.h5'.format(envName, initialTime))
+            # agent.targetNetwork.model.save('save/{}_target_model_{}.h5'.format(envName, initialTime))
         if np.mean(scoresWindow) >= targetReward:
             avgScoreGreaterThanTargetCounter += 1
             if avgScoreGreaterThanTargetCounter >= 5:
@@ -221,7 +222,7 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
 
 #train
 envName = "MountainCar-v0"
-log_file_name = "logs/2.log"
+log_file_name = "experiments/exp2/exp2.log"
 env = gym.make(envName)
 agent = DDQNAgent(env, bufferSize=100000, gamma=0.99, batchSize=64, lr=0.0001, callbacks=[])
 scores = train(numEpisodes=2000, targetReward=-110, epsDecayRate=0.9, debug = False, log_file_name = log_file_name)
