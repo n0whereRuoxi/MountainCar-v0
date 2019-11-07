@@ -197,11 +197,11 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
         eps = max(endEpsilon, epsDecayRate * eps)        
         msg = 'Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tScore*: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}'\
             '\tEpsilon: {:.3f}\tAverage Score: {:.2f}\t'.format(episode, timeTaken, score, score_aug, state[0], np.mean(agent.qTargets), eps, np.mean(scoresWindow))
-        if log_file_name:
-            with open(log_file_name, 'w+') as log_file:
-                log_file.write(msg)
-        else:
-            print(msg)
+        # if log_file_name:
+        #     with open(log_file_name, 'w+') as log_file:
+        #         log_file.write(msg)
+        # else:
+        print(msg)
         if episode % 10 == 0:
             # print('Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}\tAverage Score: {:.2f}'.format(
                     # episode, timeTaken, score, state[0], np.mean(agent.qTargets), np.mean(scoresWindow)))
