@@ -1,6 +1,5 @@
 import argparse
 import os
-
 import gym
 import numpy as np
 from collections import deque
@@ -31,14 +30,11 @@ class DQNetwork:
         self.batchNormPerLayer = batchNormPerLayer
         self.dropoutPerLayer = dropoutPerLayer
         self.learningRate = learningRate
-
         self.build_model()
 
     def build_model(self):
         states = K.layers.Input(shape=(self.numStates,), name='states')
         neuralNet = states
-        # hidden layers
-
         for i in range(len(self.layerSizes)):
             neuralNet = K.layers.Dense(units=self.layerSizes[i])(neuralNet)
             neuralNet = K.layers.Activation('relu')(neuralNet)
@@ -48,9 +44,7 @@ class DQNetwork:
 
         actions = K.layers.Dense(units=self.numActions, activation='linear',
                                  name='rawActions')(neuralNet)
-
         self.model = K.models.Model(inputs=states, outputs=actions)
-
         self.optimizer = K.optimizers.Adam(lr=self.learningRate)
         self.model.compile(loss='mse', optimizer=self.optimizer)
 
@@ -160,7 +154,7 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.memory)
 
-def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9, targetReward=1000, debug = True, log_file_name = None):
+def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9, targetReward=1000, debug = True, log_file_name = None, save_folder_name = None):
     scores = []
     scores_aug = []
     scoresWindow = deque(maxlen=100)
@@ -208,8 +202,12 @@ def train(numEpisodes=2000, startEpsilon=1.0, endEpsilon=0.001, epsDecayRate=0.9
         if episode % 10 == 0:
             # print('Episode {}\tTime Taken: {:.2f} sec\tScore: {:.2f}\tState: {}\tAverage Q-Target: {:.4f}\tAverage Score: {:.2f}'.format(
                     # episode, timeTaken, score, state[0], np.mean(agent.qTargets), np.mean(scoresWindow)))
-            agent.localNetwork.model.save('save/{}_local_model_{}.h5'.format(envName, initialTime))
-            agent.targetNetwork.model.save('save/{}_target_model_{}.h5'.format(envName, initialTime))
+            if save_folder_name:
+                agent.localNetwork.model.save('{}/{}_local_model_{}.h5'.format(save_folder_name, envName, initialTime))
+                agent.targetNetwork.model.save('{}/{}_target_model_{}.h5'.format(save_folder_name, envName, initialTime))
+            else:
+                agent.localNetwork.model.save('save/{}_local_model_{}.h5'.format(envName, initialTime))
+                agent.targetNetwork.model.save('save/{}_target_model_{}.h5'.format(envName, initialTime))
         if np.mean(scoresWindow) >= targetReward:
             avgScoreGreaterThanTargetCounter += 1
             if avgScoreGreaterThanTargetCounter >= 5:
@@ -228,7 +226,11 @@ if __name__ == "__main__":
                            type=str, default=None, required=False)
     args = argparser.parse_args()
     envName = "MountainCar-v0"
-    log_file_name = args.log
+    log_file_name = None
+    save_folder_name = None
+    if args.log:
+        log_file_name = "experiments/{}/{}.log".format(args.log, args.log)
+        save_folder_name = "experiments/{}/save".format(args.log)
     env = gym.make(envName)
     agent = DDQNAgent(env, bufferSize=100000, gamma=0.99, batchSize=64, lr=0.0001, callbacks=[])
-    scores = train(numEpisodes=2000, targetReward=-110, epsDecayRate=0.9, debug = False, log_file_name = log_file_name)
+    scores = train(numEpisodes=2000, targetReward=-98, epsDecayRate=0.9, debug = False, log_file_name = log_file_name, save_folder_name = save_folder_name)

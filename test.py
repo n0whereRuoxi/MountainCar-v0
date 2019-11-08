@@ -12,37 +12,44 @@ env = gym.make(envName)
 
 def play_model(actor):
     state = env.reset()
+    qs = []
     score = 0
     done = False
     while not done:
-        env.render()
+        # env.render()
         state = np.reshape(state, [-1, env.observation_space.shape[0]])
-        action = actor.predict(state)
-        nextState, reward, done, _ = env.step(np.argmax(action))
-        if done:
-            print(nextState, reward, done)
+        q_actions = actor.predict(state)
+        action = np.argmax(q_actions)
+        q_max = np.amax(q_actions)
+        qs.append(q_max)
+        nextState, reward, done, _ = env.step(action)
         state = nextState
         score += reward
         if done:
-            return score
-    return 0
+            return score, qs
+    return 0, None
 
-model = "save/MountainCar-v0_target_model_1543419126.88.h5"
+model = "experiments/exp1/save/MountainCar-v0_local_model_1573103728.728163.h5"
 totalIters = 100
 expectedReward = -110
 
 #Test
 testScores = []
+mses = []
 actor = K.models.load_model('{}'.format(model))
 print("Saved model loaded from '{}'".format(model))
 print("Starting testing.. Expecting reward to be {} over {} iterations".format(
     expectedReward, totalIters))
 for itr in range(1, totalIters + 1):
-    score = play_model(actor)
+    score, qs = play_model(actor)
     testScores.append(score)
-    print("Iteration: {}\tScore: {}".format(itr, score))
+    qs_ = [-i for i in range(len(qs) - 1, -1, -1)]
+    mse = ((np.array(qs) - np.array(qs_))**2).mean()
+    mses.append(mse)
+    print("Iteration: {}\tScore: {}\tMSE: {}".format(itr, score, mse))
+
 avg_reward = np.mean(testScores)
-print("Total Avg. Score over {} consecutive iterations : {}".format(totalIters, avg_reward))
+print("Total Avg. Score over {} consecutive iterations : {}. MSE = {}.".format(totalIters, avg_reward, np.array(mses).mean()))
 if avg_reward >= expectedReward:
     print("Agent finished test within expected reward boundary! Environment is solved.")
 else:

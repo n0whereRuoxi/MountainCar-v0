@@ -1,0 +1,16 @@
+Saved model loaded from 'experiments/exp1/save/MountainCar-v0_local_model_1573073365.145504.h5'
+Starting testing.. Expecting reward to be -110 over 100 iterations
+Iteration: 1	Score: -134.0
+Iteration: 2	Score: -129.0
+Iteration: 3	Score: -200.0
+Iteration: 4	Score: -131.0
+Iteration: 5	Score: -128.0
+Iteration: 6	Score: -130.0
+Iteration: 7	Score: -130.0
+Iteration: 8	Score: -127.0
+Iteration: 9	Score: -130.0
+Iteration: 10	Score: -130.0
+Iteration: 11	Score: -129.0
+Iteration: 12	Score: -129.0
+Iteration: 13	Score: -127.0
+Iteration: 14	Score: -139.0
